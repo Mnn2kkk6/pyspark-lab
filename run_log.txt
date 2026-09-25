@@ -1,0 +1,197 @@
+======================================================================
+YÊU CẦU 1: Đọc dữ liệu với schema tự khai báo
+======================================================================
+>>> Schema:
+root
+ |-- order_id: integer (nullable = true)
+ |-- customer_id: string (nullable = true)
+ |-- province: string (nullable = true)
+ |-- amount: double (nullable = true)
+ |-- status: string (nullable = true)
+ |-- order_date: string (nullable = true)
+>>> Dữ liệu null / parse không đúng theo từng cột:
++--------+-----------+--------+------+------+----------+
+|order_id|customer_id|province|amount|status|order_date|
++--------+-----------+--------+------+------+----------+
+|       0|          0|       1|     7|     0|         0|
++--------+-----------+--------+------+------+----------+
+>>> Toàn bộ dữ liệu thô sau khi áp schema:
++--------+-----------+----------+--------+---------+----------+
+|order_id|customer_id|province  |amount  |status   |order_date|
++--------+-----------+----------+--------+---------+----------+
+|1       |C001       |HCM       |155000.0|Paid     |2024-04-08|
+|2       |C002       |HCM       |72000.0 |paid     |2024-07-02|
+|3       |C003       |Can Tho   |587000.0|paid     |2024-09-07|
+|4       |C004       |Khanh Hoa |702000.0|PaId     |2024-05-26|
+|5       |C005       |Da Nang   |211000.0|Paid     |2024-05-05|
+|6       |C006       |Binh Duong|686000.0|PaId     |2024-02-12|
+|7       |C007       |Bac Ninh  |144000.0|paid     |2024-08-18|
+|8       |C008       |Nghe An   |194000.0|Paid     |2024-06-19|
+|9       |C009       |HCM       |691000.0|PAID     |2024-05-03|
+|10      |C010       |HCM       |328000.0|PaId     |2024-06-06|
+|11      |C011       |Can Tho   |597000.0|paid     |2024-03-18|
+|12      |C012       |Da Nang   |563000.0|Paid     |2024-09-08|
+|13      |C013       |Hanoi     |251000.0|paid     |2024-06-13|
+|14      |C014       |Can Tho   |542000.0|Cancelled|2024-06-07|
+|15      |C015       |Nghe An   |249000.0|Cancelled|05/01/2024|
+|16      |C016       |Can Tho   |488000.0|Pending  |2024-05-24|
+|17      |C017       |Bac Ninh  |420000.0|PAID     |2024-03-17|
+|18      |C018       |Hanoi     |560000.0|cancelled|2024-03-26|
+|19      |C019       |Bac Ninh  |239000.0|PaId     |2024-08-17|
+|20      |C020       |Khanh Hoa |714000.0|cancelled|2024-02-22|
++--------+-----------+----------+--------+---------+----------+
+only showing top 20 rows
+======================================================================
+YÊU CẦU 2: Chuẩn hóa + validate + tách valid/invalid
+======================================================================
+>>> valid_orders: 90 dòng
+|order_id|customer_id|province  |amount  |status   |order_date|
++--------+-----------+----------+--------+---------+----------+
+|1       |C001       |HCM       |155000.0|PAID     |2024-04-08|
+|2       |C002       |HCM       |72000.0 |PAID     |2024-07-02|
+|3       |C003       |Can Tho   |587000.0|PAID     |2024-09-07|
+|4       |C004       |Khanh Hoa |702000.0|PAID     |2024-05-26|
+|5       |C005       |Da Nang   |211000.0|PAID     |2024-05-05|
+|6       |C006       |Binh Duong|686000.0|PAID     |2024-02-12|
+|7       |C007       |Bac Ninh  |144000.0|PAID     |2024-08-18|
+|8       |C008       |Nghe An   |194000.0|PAID     |2024-06-19|
+|9       |C009       |HCM       |691000.0|PAID     |2024-05-03|
+|10      |C010       |HCM       |328000.0|PAID     |2024-06-06|
+|11      |C011       |Can Tho   |597000.0|PAID     |2024-03-18|
+|12      |C012       |Da Nang   |563000.0|PAID     |2024-09-08|
+|13      |C013       |Hanoi     |251000.0|PAID     |2024-06-13|
+|14      |C014       |Can Tho   |542000.0|CANCELLED|2024-06-07|
+|16      |C016       |Can Tho   |488000.0|PENDING  |2024-05-24|
+|17      |C017       |Bac Ninh  |420000.0|PAID     |2024-03-17|
+|18      |C018       |Hanoi     |560000.0|CANCELLED|2024-03-26|
+|19      |C019       |Bac Ninh  |239000.0|PAID     |2024-08-17|
+|20      |C020       |Khanh Hoa |714000.0|CANCELLED|2024-02-22|
+|23      |C023       |HCM       |199000.0|CANCELLED|2024-09-20|
++--------+-----------+----------+--------+---------+----------+
+only showing top 20 rows
+>>> invalid_orders: 15 dòng
++--------+----------+--------+---------+----------+----------------+
+|order_id|province  |amount  |status   |order_date|error_reason    |
++--------+----------+--------+---------+----------+----------------+
+|15      |Nghe An   |249000.0|CANCELLED|05/01/2024|INVALID_DATE    |
+|21      |Hai Phong |-50000.0|PENDING  |2024-02-10|INVALID_AMOUNT  |
+|22      |Hue       |-50000.0|PAID     |2024-09-25|INVALID_AMOUNT  |
+|33      |Hai Phong |NULL    |PAID     |2024-09-05|INVALID_AMOUNT  |
+|48      |Can Tho   |-50000.0|PAID     |2024-05-15|INVALID_AMOUNT  |
+|60      |HCM       |698000.0|PAID     |05/01/2024|INVALID_DATE    |
+|78      |Da Nang   |NULL    |PAID     |2024-08-20|INVALID_AMOUNT  |
+|90      |Hanoi     |NULL    |PAID     |2024-07-25|INVALID_AMOUNT  |
+|92      |Binh Duong|NULL    |PAID     |2024-07-18|INVALID_AMOUNT  |
+|96      |Bac Ninh  |371000.0|PAID     |not_a_date|INVALID_DATE    |
+|99      |Nghe An   |NULL    |PAID     |2024-08-01|INVALID_AMOUNT  |
+|100     |Hanoi     |NULL    |CANCELLED|2024-04-21|INVALID_AMOUNT  |
+|103     |Da Nang   |-50000.0|CANCELLED|2024-01-07|INVALID_AMOUNT  |
+|104     |NULL      |300000.0|PAID     |2024-01-09|MISSING_PROVINCE|
+|105     |HCM       |NULL    |PENDING  |2024-01-10|INVALID_AMOUNT  |
++--------+----------+--------+---------+----------+----------------+
+======================================================================
+YÊU CẦU 3: Ghi Parquet - cách thường vs partitionBy
+======================================================================
+      ._SUCCESS.crc
+      .part-00000-5d097a9e-8ef7-4516-ac48-18a3bc5c722f-c000.snappy.parquet.crc
+      _SUCCESS
+      part-00000-5d097a9e-8ef7-4516-ac48-18a3bc5c722f-c000.snappy.parquet
+>>> Cấu trúc thư mục valid_orders_partitioned (partitionBy province):
+      ._SUCCESS.crc
+      _SUCCESS
+[DIR] province=Bac Ninh
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Binh Duong
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Can Tho
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Da Nang
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=HCM
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Hai Phong
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Hanoi
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Hue
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Khanh Hoa
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+[DIR] province=Nghe An
+        .part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet.crc
+        part-00000-d9ae53ed-0ac9-45d5-88d7-dc42d15b9d6c.c000.snappy.parquet
+>>> Số file part-* trong valid_orders (không partition): 1
+>>> Số thư mục con theo province trong valid_orders_partitioned: 10 -> ['province=Can Tho', 'province=HCM', 'province=Khanh Hoa', 'province=Bac Ninh', 'province=Da Nang', 'province=Binh Duong', 'province=Hue', 'province=Hanoi', 'province=Hai Phong', 'province=Nghe An']
+======================================================================
+YÊU CẦU 4: Append vs Overwrite
+======================================================================
+>>> Sau overwrite lần 1: count = 90
+>>> Sau overwrite lần 2 (ghi lại valid_orders gốc): count = 90 -> dữ liệu append trước đó ĐÃ BỊ THAY THẾ (mất)
+======================================================================
+YÊU CẦU 5: Đọc lại Parquet và validate
+======================================================================
+>>> Schema đọc lại:
+root
+ |-- order_id: integer (nullable = true)
+ |-- customer_id: string (nullable = true)
+ |-- province: string (nullable = true)
+ |-- amount: double (nullable = true)
+ |-- status: string (nullable = true)
+ |-- order_date: string (nullable = true)
+>>> Total count đọc lại: 90 (so với valid_orders trước khi ghi: 90)
+>>> Count theo province (đọc lại từ Parquet không-partition):
++----------+-----+
+|  province|count|
++----------+-----+
+|  Bac Ninh|    8|
+|Binh Duong|    8|
+|   Can Tho|    8|
+|   Da Nang|   12|
+|       HCM|   12|
+| Hai Phong|    3|
+|     Hanoi|   12|
+|       Hue|    9|
+| Khanh Hoa|   11|
+|   Nghe An|    7|
++----------+-----+
+>>> Tổng amount theo province (đọc lại):
++----------+------------+
+|  province|total_amount|
++----------+------------+
+|  Bac Ninh|   3120000.0|
+|Binh Duong|   4316000.0|
+|   Can Tho|   4509000.0|
+|   Da Nang|   5339000.0|
+|       HCM|   3804000.0|
+| Hai Phong|   1126000.0|
+|     Hanoi|   3997000.0|
+|       Hue|   2444000.0|
+| Khanh Hoa|   5527000.0|
+|   Nghe An|   2985000.0|
++----------+------------+
+>>> KẾT LUẬN: Dữ liệu sau khi ghi/đọc lại KHỚP HOÀN TOÀN với DataFrame trước khi write.
+>>> Đọc lại valid_orders_partitioned, kiểm tra cột province tự suy ra từ folder:
++----------+-----+
+|  province|count|
++----------+-----+
+|  Bac Ninh|    8|
+|Binh Duong|    8|
+|   Can Tho|    8|
+|   Da Nang|   12|
+|       HCM|   12|
+| Hai Phong|    3|
+|     Hanoi|   12|
+|       Hue|    9|
+| Khanh Hoa|   11|
+|   Nghe An|    7|
++----------+-----+
+DONE.
