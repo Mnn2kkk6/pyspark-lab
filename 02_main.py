@@ -22,7 +22,7 @@ spark = (
 spark.sparkContext.setLogLevel("ERROR")
 
 DATA_PATH = "data/orders.csv"
-OUT_DIR = "output"
+OUT_DIR = "output_bai1"
 
 # dọn output cũ để chạy lại từ đầu cho sạch (chỉ chạy lần đầu tiên trong bài demo)
 if os.path.exists(OUT_DIR):
