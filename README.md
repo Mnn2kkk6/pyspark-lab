@@ -135,6 +135,8 @@ khớp 100% với dữ liệu trước khi ghi.
 → left join: 0 dòng thiếu customer → report đủ 10 tỉnh với 6 chỉ số → đọc
 lại Parquet: count khớp (86), tổng `amount` khớp tuyệt đối trước/sau ghi.
 
+
+
 ## 8. Tổng hợp phần trả lời lý thuyết
 
 ### Chung cho cả 2 bài
