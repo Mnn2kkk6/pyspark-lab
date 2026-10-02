@@ -135,7 +135,7 @@ khớp 100% với dữ liệu trước khi ghi.
 → left join: 0 dòng thiếu customer → report đủ 10 tỉnh với 6 chỉ số → đọc
 lại Parquet: count khớp (86), tổng `amount` khớp tuyệt đối trước/sau ghi.
 
-## 7. Tổng hợp phần trả lời lý thuyết
+## 8. Tổng hợp phần trả lời lý thuyết
 
 ### Chung cho cả 2 bài
 
@@ -218,3 +218,180 @@ nạp lại.
   trước khi tính aggregate.
 - `partitionBy("province")` khi ghi — Spark cũng phải sắp xếp/gom dữ liệu
   theo `province` trước khi ghi ra từng thư mục.
+
+
+## 7. Bài 3 — Structured Streaming + Kafka
+
+Phần này mở rộng PySpark Lab từ Batch sang xử lý dữ liệu liên tục.
+
+### 7.1 Kiến trúc
+
+```text
+data/orders.csv
+      |
+      v
+Kafka Producer
+      |
+      v
+Kafka topic: orders
+  - partition
+  - offset
+      |
+      v
+Spark Structured Streaming
+  - readStream(Kafka)
+  - JSON -> StructType
+  - cast / normalize
+  - validate
+      |
+      +--------------------+
+      |                    |
+      v                    v
+event-level output    province aggregate
+append -> Parquet     update / complete -> console
+      |
+      v
+checkpoint
+```
+
+### 7.2 File mới
+
+- `04_kafka_producer.py`: đọc `data/orders.csv`, gửi từng order thành JSON message vào Kafka và in `partition` + `offset`.
+- `05_structured_streaming.py`: Spark đọc Kafka bằng `readStream`, parse JSON theo schema, validate dữ liệu và minh họa `append`, `update`, `complete`.
+- `docker-compose-kafka.yml`: chạy Kafka KRaft trên `localhost:9092`, không cần ZooKeeper.
+- `requirements-streaming.txt`: thư viện cần cho producer.
+
+### 7.3 Kafka: topic, partition, offset
+
+Topic `orders` được dùng làm luồng sự kiện và được tạo với 3 partition. Mỗi message có một `offset` là vị trí của nó trong partition.
+
+Producer dùng `order_id` làm key. Khi chạy producer, terminal sẽ hiển thị partition và offset mà Kafka trả về cho từng message. Chạy `--repeat 2` sẽ gửi lại dữ liệu và giúp quan sát offset tiếp tục tăng.
+
+### 7.4 Spark đọc Kafka
+
+Với Spark 3.5.9:
+
+```powershell
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.9 05_structured_streaming.py --mode inspect --once
+```
+
+Mode `inspect` in dữ liệu đã parse cùng metadata `kafka_partition`, `kafka_offset`, `kafka_timestamp`.
+
+Muốn query tiếp tục chạy và nhận message mới:
+
+```powershell
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.9 05_structured_streaming.py --mode inspect
+```
+
+### 7.5 append
+
+Mode `append` lọc record hợp lệ rồi ghi thêm vào Parquet:
+
+```powershell
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.9 05_structured_streaming.py --mode append
+```
+
+Output sau khi chạy:
+
+```text
+streaming_output/
+└── append_valid_orders/
+    ├── province=Bac Ninh/
+    ├── province=Hanoi/
+    ├── province=HCM/
+    └── ...
+```
+
+Checkpoint:
+
+```text
+checkpoints/structured_streaming/append/
+```
+
+### 7.6 update
+
+Mode `update` aggregate theo province và xuất những dòng aggregate thay đổi trong micro-batch:
+
+```powershell
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.9 05_structured_streaming.py --mode update --once
+```
+
+### 7.7 complete
+
+Mode `complete` xuất toàn bộ Result Table của aggregate sau mỗi micro-batch:
+
+```powershell
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.9 05_structured_streaming.py --mode complete --once
+```
+
+Trong lab này `update` và `complete` dùng console sink để dễ quan sát.
+
+### 7.8 Checkpoint
+
+Mỗi mode có checkpoint riêng:
+
+```text
+checkpoints/
+└── structured_streaming/
+    ├── inspect/
+    ├── append/
+    ├── update/
+    └── complete/
+```
+
+Checkpoint giúp Spark lưu tiến độ xử lý/state cần thiết để query có thể phục hồi theo offset đã xử lý.
+
+Không dùng chung checkpoint giữa các mode khác nhau.
+
+### 7.9 Batch và Streaming trong cùng repo
+
+Batch:
+
+```text
+CSV
+ -> schema
+ -> validate
+ -> deduplicate (Window)
+ -> join
+ -> aggregate
+ -> Parquet
+ -> readback/check
+```
+
+Streaming:
+
+```text
+Kafka
+ -> readStream
+ -> JSON -> schema
+ -> validate
+ -> append/update/complete
+ -> sink
+ -> checkpoint
+```
+
+Hai phần dùng cùng bộ dữ liệu `orders.csv`, giúp nhìn rõ sự khác nhau giữa dataset hữu hạn của Batch và stream liên tục.
+
+### 7.10 Cách chạy toàn bộ lab
+
+```powershell
+python 01_generate_data.py
+python 02_main.py
+python 03_main_full.py
+
+docker compose -f docker-compose-kafka.yml up -d
+
+docker exec -it pyspark-lab-kafka /opt/kafka/bin/kafka-topics.sh --create --topic orders --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+
+pip install -r requirements-streaming.txt
+
+# Terminal 1
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.9 05_structured_streaming.py --mode inspect
+
+# Terminal 2
+python 04_kafka_producer.py --topic orders --delay 0.3
+```
+
+Sau đó có thể đổi `--mode` sang `append`, `update`, `complete`.
+
+> Output Streaming và checkpoint không được commit sẵn vì chúng phụ thuộc trạng thái Kafka, offset và lần chạy. Khi chạy local, `streaming_output/` và `checkpoints/` sẽ được tạo thực tế.
