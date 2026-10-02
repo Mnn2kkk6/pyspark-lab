@@ -89,14 +89,16 @@ def main():
                       .option("checkpointLocation", checkpoint).partitionBy("province"))
         else:
             valid = checked.filter("error_reason = ''")
-            report = (valid.groupBy("province").agg(
+            # Không orderBy toàn bộ streaming aggregate vì global sort không
+            # phù hợp với streaming query. Console vẫn hiển thị Result Table.
+            report = valid.groupBy("province").agg(
                 F.count("*").alias("total_orders"),
                 F.countDistinct("customer_id").alias("total_customers"),
                 F.sum("amount").alias("total_amount"),
                 F.avg("amount").alias("avg_amount"),
                 F.sum(F.when(F.col("status") == "PAID", 1).otherwise(0)).alias("success_orders"),
                 F.sum(F.when(F.col("status") == "CANCELLED", 1).otherwise(0)).alias("failed_orders")
-            ).orderBy("province"))
+            )
             writer = (report.writeStream.format("console").outputMode(a.mode)
                       .option("truncate", False).option("numRows", 50)
                       .option("checkpointLocation", checkpoint))
