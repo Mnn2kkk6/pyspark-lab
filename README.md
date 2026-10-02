@@ -20,7 +20,7 @@ sinh ra từ `01_generate_data.py`:
 │   ├── orders.csv             # order_id, customer_id, province, amount,
 │   │                           # status, order_date, updated_at
 │   └── customers.csv          # customer_id, customer_name, customer_type
-├── output_bai1/                # sinh ra khi chạy 02_main.py
+├── output/                     # output Bài 1 đang được lưu trong repo
 │   ├── valid_orders/
 │   ├── valid_orders_partitioned/
 │   ├── invalid_orders/
@@ -46,7 +46,7 @@ sinh ra từ `01_generate_data.py`:
 - Java 17/21 (Spark cần JVM)
 - PySpark: `pip install pyspark`
 
-## 3. Cách chạy
+> `02_main.py` hiện cấu hình ghi output mới vào `output_bai1/` khi chạy local. Thư mục `output/` là bộ output Bài 1 đã được lưu sẵn trong repository.\n\n## 3. Cách chạy
 
 ```bash
 # Bước 1: sinh dữ liệu đầu vào (chung cho cả 2 bài)
@@ -102,7 +102,7 @@ Các trường hợp lỗi/đặc biệt được **cài chủ đích**:
 - **Yêu cầu 5**: Đọc lại Parquet, so sánh `schema`, `count`, `count theo
   province`, `tổng amount theo province` với DataFrame trước khi ghi.
 
-**Kết quả demo:** 105 dòng đọc vào → 90 valid / 15 invalid → ghi thường 1
+**Kết quả demo của một lần chạy đã lưu log:** 105 dòng đọc vào → 90 valid / 15 invalid → ghi thường 1
 file `part-*`, `partitionBy` ra 10 thư mục `province=.../` → append/
 overwrite: 90 → 92 (append) → 90 (overwrite, dữ liệu append mất) → đọc lại
 khớp 100% với dữ liệu trước khi ghi.
